@@ -40,6 +40,7 @@
         /* Form Inputs */
         .form-group { margin-bottom: 15px; display: block; }
         input, select { width: 100%; padding: 12px 15px; box-sizing: border-box; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; }
+        input[type="file"] { padding: 10px; background-color: #f9f9f9; cursor: pointer; }
         input:focus, select:focus { border-color: var(--primary-blue); }
         
         /* Buttons */
@@ -132,7 +133,16 @@
             <h2 class="section-title">System Settings</h2>
             <p><strong>Database:</strong> Google Sheets connected</p>
             <p><strong>Printer Type:</strong> 58mm Thermal</p>
-            <button class="btn-generate" onclick="clearLocalData()" style="background-color: #e74c3c; margin-top: 20px;">⚠️ Clear Local Device Memory</button>
+            
+            <div class="sub-title" style="margin-top: 25px;">Import Members List</div>
+            <p style="font-size: 12px; color: #666;">In Excel, save your list of names as a <b>CSV (Comma delimited)</b> file and upload it here.</p>
+            <div class="form-group">
+                <input type="file" id="csvFileInput" accept=".csv">
+            </div>
+            <button class="btn-generate" style="background-color: #8e44ad; margin-top: 0;" onclick="importMembersFromCSV()">📥 Load Names into System</button>
+
+            <div class="sub-title" style="margin-top: 35px;">Danger Zone</div>
+            <button class="btn-generate" onclick="clearLocalData()" style="background-color: #e74c3c; margin-top: 0;">⚠️ Clear Local Device Memory</button>
         </div>
     </div>
 
@@ -180,7 +190,8 @@
         function populateDatalist() {
             const datalist = document.getElementById('memberList');
             datalist.innerHTML = '';
-            knownMembers.forEach(member => {
+            // Sort names alphabetically before displaying
+            knownMembers.sort().forEach(member => {
                 let option = document.createElement('option');
                 option.value = member;
                 datalist.appendChild(option);
@@ -236,45 +247,32 @@
             let filteredReceipts = [];
             let fileNameSuffix = "";
 
-            // Filter data based on selected button
             localReceipts.forEach(receipt => {
                 const rDate = new Date(receipt.date);
-                
                 if (timeframe === 'month' && rDate.getMonth() === today.getMonth() && rDate.getFullYear() === today.getFullYear()) {
-                    filteredReceipts.push(receipt);
-                    fileNameSuffix = "This_Month";
+                    filteredReceipts.push(receipt); fileNameSuffix = "This_Month";
                 } 
                 else if (timeframe === 'year' && rDate.getFullYear() === today.getFullYear()) {
-                    filteredReceipts.push(receipt);
-                    fileNameSuffix = "This_Year";
+                    filteredReceipts.push(receipt); fileNameSuffix = "This_Year";
                 } 
                 else if (timeframe === 'week') {
                     const diffDays = Math.ceil(Math.abs(today - rDate) / (1000 * 60 * 60 * 24)); 
-                    if(diffDays <= 7) { filteredReceipts.push(receipt); }
-                    fileNameSuffix = "Last_7_Days";
+                    if(diffDays <= 7) { filteredReceipts.push(receipt); } fileNameSuffix = "Last_7_Days";
                 } 
                 else if (timeframe === 'all') {
-                    filteredReceipts.push(receipt);
-                    fileNameSuffix = "All_Time";
+                    filteredReceipts.push(receipt); fileNameSuffix = "All_Time";
                 }
             });
 
-            if (filteredReceipts.length === 0) {
-                alert(`No records found for ${fileNameSuffix.replace(/_/g, " ")}.`);
-                return;
-            }
+            if (filteredReceipts.length === 0) { alert(`No records found for ${fileNameSuffix.replace(/_/g, " ")}.`); return; }
 
-            // Build CSV Content
             let csvContent = "Date,Member Name,Amount (TZS),Payment Method\n";
             filteredReceipts.forEach(r => {
-                // Quotes around the name ensure any commas typed in the name don't break the CSV columns
                 csvContent += `${r.date},"${r.name}",${r.amount},${r.method}\n`;
             });
 
-            // Generate Download File
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
-            
             const link = document.createElement("a");
             link.setAttribute("href", url);
             link.setAttribute("download", `KICC_Tithe_Report_${fileNameSuffix}.csv`);
@@ -283,9 +281,52 @@
             document.body.removeChild(link);
         }
 
+        // --- NEW: CSV Import Function ---
+        function importMembersFromCSV() {
+            const fileInput = document.getElementById('csvFileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please click 'Choose File' and select a .csv file first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n'); // Split document into lines
+                let newMembersCount = 0;
+
+                rows.forEach(row => {
+                    // Extract the first column value, clean up quotes and empty spaces
+                    let name = row.split(',')[0].replace(/"/g, '').trim();
+                    
+                    // Skip empty rows, or if the header row actually says "Name"
+                    if (name && name.toLowerCase() !== 'name' && !knownMembers.includes(name)) {
+                        knownMembers.push(name);
+                        newMembersCount++;
+                    }
+                });
+
+                if (newMembersCount > 0) {
+                    localStorage.setItem('kicc_members', JSON.stringify(knownMembers));
+                    populateDatalist();
+                    updateTopBar();
+                    alert(`Success! Imported ${newMembersCount} new members into the system.`);
+                } else {
+                    alert("No new names were found. Make sure names are in the first column of the CSV.");
+                }
+                
+                // Clear the file input box after upload
+                fileInput.value = '';
+            };
+            
+            reader.readAsText(file);
+        }
+
         // --- Settings Utilities ---
         function clearLocalData() {
-            if(confirm("Are you sure? This deletes the local history from this phone. (Your Google Sheets data is safe and will not be deleted).")) {
+            if(confirm("Are you sure? This deletes the local history from this phone. (Your Google Sheets data is safe).")) {
                 localStorage.removeItem('kicc_receipts');
                 localReceipts = [];
                 updateTopBar();
