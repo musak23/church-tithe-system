@@ -1,440 +1,291 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KILIMANJARO INTERNATIONAL CHRIATIAN CENTER</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    #root {
-      min-height: 100vh;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Church Tithe System</title>
+    <style>
+        /* Modern UI Reset & Colors */
+        :root {
+            --primary-blue: #3498db;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-dark: #333333;
+            --border-color: #e0e0e0;
+            --topbar-bg: #2c3e50;
+        }
+        
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 0; color: var(--text-dark); }
+        
+        /* Top Status Bar */
+        .top-bar { background-color: var(--topbar-bg); color: white; padding: 10px 20px; font-size: 14px; display: flex; align-items: center; }
+        .top-bar span { background-color: #2ecc71; color: white; border-radius: 3px; padding: 2px 6px; margin-right: 10px; font-size: 12px; }
+
+        /* Main Container */
+        .container { max-width: 600px; margin: 20px auto; padding: 0 15px; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 12px; text-align: center; background-color: #e9ecef; border-radius: 8px; cursor: pointer; font-weight: bold; color: #7f8c8d; border: none; transition: 0.3s; }
+        .tab.active { background-color: var(--primary-blue); color: white; }
+
+        /* Card Setup */
+        .card { background-color: var(--card-bg); border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .section-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; margin-top: 0; }
+        .sub-title { font-size: 14px; font-weight: bold; color: #7f8c8d; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        /* Form Inputs */
+        .form-group { margin-bottom: 15px; display: block; }
+        input, select { width: 100%; padding: 12px 15px; box-sizing: border-box; font-size: 15px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; }
+        input:focus, select:focus { border-color: var(--primary-blue); }
+        
+        /* Buttons */
+        .btn-generate { width: 100%; padding: 15px; background-color: var(--primary-blue); color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; margin-top: 10px; }
+        .btn-csv { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; font-size: 15px; font-weight: bold; cursor: pointer; border-radius: 6px; margin-bottom: 10px; text-align: left; }
+        .btn-csv:hover { background-color: #219a52; }
+        
+        /* Sections logic */
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* Print Views - Hidden on Web */
+        #receipt-print { display: none; text-align: center; font-family: 'Courier New', Courier, monospace; }
+        .print-header { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .print-sub { font-size: 12px; margin-bottom: 10px; }
+        .print-line { border-bottom: 1px dashed #000; margin: 10px 0; }
+
+        /* Print Magic: Hide UI, show ONLY 58mm Receipt layout */
+        @media print {
+            @page { size: 58mm auto; margin: 0; }
+            body { background-color: white; padding: 0; margin: 0; }
+            .top-bar, .container { display: none !important; }
+            
+            #receipt-print { 
+                display: block !important; 
+                width: 58mm; 
+                margin: 0 auto; 
+                padding: 3mm; 
+                box-sizing: border-box;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    <div class="top-bar">
+        <span>✅</span> <div id="sync-status">Synced 0 receipts | 0 members</div>
+    </div>
 
-    const INITIAL_MEMBERS = [
-      { id: 1, name: "Mr&Mrs Patrick Mugusie", phone: "0712345678", memberNo: "M001" },
-      { id: 2, name: "Mr&Mrs Kivuyo", phone: "0723456789", memberNo: "M002" },
-      { id: 3, name: "Mr&Mrs Emmanuel Damas", phone: "0734567890", memberNo: "M003" },
-      { id: 4, name: "Kelvin Kabyemera", phone: "0745678901", memberNo: "M004" },
-      { id: 5, name: "Deo Nachenga", phone: "0756789012", memberNo: "M005" },
-    ];
-
-    function ChurchTitheSystem() {
-      const [members, setMembers] = useState([]);
-      const [receipts, setReceipts] = useState([]);
-      const [selectedMember, setSelectedMember] = useState(null);
-      const [amount, setAmount] = useState('');
-      const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-      const [paymentMethod, setPaymentMethod] = useState('Cash');
-      const [receiptNo, setReceiptNo] = useState('');
-      const [showReceipt, setShowReceipt] = useState(false);
-      const [currentReceipt, setCurrentReceipt] = useState(null);
-      const [view, setView] = useState('form');
-      const [searchTerm, setSearchTerm] = useState('');
-      const [showAddMember, setShowAddMember] = useState(false);
-      const [newMember, setNewMember] = useState({ name: '', phone: '', memberNo: '' });
-      const [reportMonth, setReportMonth] = useState(new Date().toISOString().slice(0, 7));
-      const [reportYear, setReportYear] = useState(new Date().getFullYear().toString());
-      const [reportType, setReportType] = useState('monthly');
-      const [selectedReportMember, setSelectedReportMember] = useState(null);
-      const [sheetsUrl, setSheetsUrl] = useState('');
-      const [isSynced, setIsSynced] = useState(false);
-
-      useEffect(() => {
-        const savedMembers = localStorage.getItem('churchMembers');
-        const savedReceipts = localStorage.getItem('churchReceipts');
-        const savedSheetsUrl = localStorage.getItem('sheetsUrl');
-        
-        if (savedMembers) {
-          setMembers(JSON.parse(savedMembers));
-        } else {
-          setMembers(INITIAL_MEMBERS);
-          localStorage.setItem('churchMembers', JSON.stringify(INITIAL_MEMBERS));
-        }
-        
-        if (savedReceipts) {
-          setReceipts(JSON.parse(savedReceipts));
-        }
-        
-        if (savedSheetsUrl) {
-          setSheetsUrl(savedSheetsUrl);
-          setIsSynced(true);
-        }
-      }, []);
-
-      useEffect(() => {
-        if (members.length > 0) {
-          localStorage.setItem('churchMembers', JSON.stringify(members));
-        }
-      }, [members]);
-
-      useEffect(() => {
-        if (receipts.length > 0) {
-          localStorage.setItem('churchReceipts', JSON.stringify(receipts));
-        }
-      }, [receipts]);
-
-      const filteredMembers = useMemo(() => {
-        if (!searchTerm) return members;
-        const term = searchTerm.toLowerCase();
-        return members.filter(m => 
-          m.name.toLowerCase().includes(term) || 
-          m.memberNo.toLowerCase().includes(term) ||
-          (m.phone && m.phone.includes(term))
-        );
-      }, [members, searchTerm]);
-
-      const monthlyReport = useMemo(() => {
-        const filtered = receipts.filter(r => r.date.startsWith(reportMonth));
-        const total = filtered.reduce((sum, r) => sum + r.amount, 0);
-        const byMethod = {};
-        const byMember = {};
-        
-        filtered.forEach(r => {
-          byMethod[r.paymentMethod] = (byMethod[r.paymentMethod] || 0) + r.amount;
-          byMember[r.member.name] = (byMember[r.member.name] || 0) + r.amount;
-        });
-        
-        return { 
-          receipts: filtered, 
-          total, 
-          count: filtered.length,
-          byMethod,
-          byMember: Object.entries(byMember).sort((a, b) => b[1] - a[1])
-        };
-      }, [receipts, reportMonth]);
-
-      const yearlyReport = useMemo(() => {
-        const filtered = receipts.filter(r => r.date.startsWith(reportYear));
-        const total = filtered.reduce((sum, r) => sum + r.amount, 0);
-        const byMonth = {};
-        const byMethod = {};
-        const byMember = {};
-        
-        filtered.forEach(r => {
-          const month = r.date.slice(0, 7);
-          byMonth[month] = (byMonth[month] || 0) + r.amount;
-          byMethod[r.paymentMethod] = (byMethod[r.paymentMethod] || 0) + r.amount;
-          byMember[r.member.name] = (byMember[r.member.name] || 0) + r.amount;
-        });
-        
-        return { 
-          receipts: filtered, 
-          total, 
-          count: filtered.length,
-          byMonth: Object.entries(byMonth).sort((a, b) => a[0].localeCompare(b[0])),
-          byMethod,
-          byMember: Object.entries(byMember).sort((a, b) => b[1] - a[1]),
-          average: filtered.length > 0 ? total / Object.keys(byMonth).length : 0
-        };
-      }, [receipts, reportYear]);
-
-      const memberReport = useMemo(() => {
-        if (!selectedReportMember) return { receipts: [], total: 0, count: 0, byMonth: {}, byYear: {}, average: 0, lastPayment: 'N/A' };
-        
-        const filtered = receipts.filter(r => r.member.id === selectedReportMember.id);
-        const total = filtered.reduce((sum, r) => sum + r.amount, 0);
-        const byMonth = {};
-        const byYear = {};
-        
-        filtered.forEach(r => {
-          const month = r.date.slice(0, 7);
-          const year = r.date.slice(0, 4);
-          byMonth[month] = (byMonth[month] || 0) + r.amount;
-          byYear[year] = (byYear[year] || 0) + r.amount;
-        });
-        
-        return {
-          receipts: filtered.sort((a, b) => b.date.localeCompare(a.date)),
-          total,
-          count: filtered.length,
-          byMonth: Object.entries(byMonth).sort((a, b) => b[0].localeCompare(a[0])),
-          byYear: Object.entries(byYear).sort((a, b) => b[0].localeCompare(a[0])),
-          average: filtered.length > 0 ? total / filtered.length : 0,
-          lastPayment: filtered.length > 0 ? filtered[0].date : 'N/A'
-        };
-      }, [receipts, selectedReportMember]);
-
-      const allTimeStats = useMemo(() => {
-        const total = receipts.reduce((sum, r) => sum + r.amount, 0);
-        const byMember = {};
-        const byYear = {};
-        const byMethod = {};
-        
-        receipts.forEach(r => {
-          const year = r.date.slice(0, 4);
-          byMember[r.member.id] = {
-            name: r.member.name,
-            memberNo: r.member.memberNo,
-            total: (byMember[r.member.id]?.total || 0) + r.amount,
-            count: (byMember[r.member.id]?.count || 0) + 1
-          };
-          byYear[year] = (byYear[year] || 0) + r.amount;
-          byMethod[r.paymentMethod] = (byMethod[r.paymentMethod] || 0) + r.amount;
-        });
-        
-        return {
-          total,
-          count: receipts.length,
-          byMember: Object.values(byMember).sort((a, b) => b.total - a.total),
-          byYear: Object.entries(byYear).sort((a, b) => b[0].localeCompare(a[0])),
-          byMethod,
-          average: receipts.length > 0 ? total / receipts.length : 0,
-          activeMembers: Object.keys(byMember).length
-        };
-      }, [receipts]);
-
-      const handleAddMember = () => {
-        if (newMember.name && newMember.memberNo) {
-          const member = { id: Date.now(), ...newMember };
-          setMembers([...members, member]);
-          setNewMember({ name: '', phone: '', memberNo: '' });
-          setShowAddMember(false);
-          alert('✅ Member added successfully!');
-        }
-      };
-
-      const generateReceipt = () => {
-        if (!selectedMember || !amount || !date) {
-          alert('Please fill all required fields!');
-          return;
-        }
-
-        const receipt = {
-          id: Date.now(),
-          receiptNo: receiptNo || `RCT-${Date.now()}`,
-          member: selectedMember,
-          amount: parseFloat(amount),
-          date,
-          paymentMethod,
-          generatedAt: new Date().toISOString()
-        };
-
-        setReceipts([...receipts, receipt]);
-        setCurrentReceipt(receipt);
-        setShowReceipt(true);
-        
-        if (isSynced && sheetsUrl) {
-          saveToGoogleSheets(receipt);
-        }
-      };
-
-      const saveToGoogleSheets = async (receipt) => {
-        try {
-          await fetch(sheetsUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'receipt',
-              data: {
-                receiptNo: receipt.receiptNo,
-                date: receipt.date,
-                memberNo: receipt.member.memberNo,
-                memberName: receipt.member.name,
-                amount: receipt.amount,
-                paymentMethod: receipt.paymentMethod,
-                timestamp: receipt.generatedAt
-              }
-            })
-          });
-        } catch (error) {
-          console.error('Error saving to Google Sheets:', error);
-        }
-      };
-
-      const setupGoogleSheets = () => {
-        if (sheetsUrl) {
-          localStorage.setItem('sheetsUrl', sheetsUrl);
-          setIsSynced(true);
-          alert('✅ Google Sheets connected!');
-        }
-      };
-
-      const exportToCSV = () => {
-        const csv = [
-          ['Receipt No', 'Date', 'Member No', 'Member Name', 'Amount', 'Payment Method', 'Generated At'].join(','),
-          ...receipts.map(r => [
-            r.receiptNo,
-            r.date,
-            r.member.memberNo,
-            r.member.name,
-            r.amount,
-            r.paymentMethod,
-            r.generatedAt
-          ].join(','))
-        ].join('\n');
-        
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `receipts_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-      };
-
-      const printReceipt = () => {
-        window.print();
-      };
-
-      const resetForm = () => {
-        setSelectedMember(null);
-        setAmount('');
-        setDate(new Date().toISOString().split('T')[0]);
-        setReceiptNo('');
-        setPaymentMethod('Cash');
-        setShowReceipt(false);
-        setCurrentReceipt(null);
-      };
-
-      if (showReceipt && currentReceipt) {
-        return (
-          <div style={{ fontFamily: 'Arial', padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
-            <div id="receipt" style={{ border: '2px solid #333', padding: '20px', background: '#fff', fontSize: '14px' }}>
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '10px', marginBottom: '15px' }}>
-                <h2 style={{ margin: '0 0 5px', fontSize: '20px' }}>⛪ YOUR CHURCH NAME</h2>
-                <p style={{ margin: '2px 0', fontSize: '12px' }}>P.O. Box 1234, Your City</p>
-                <p style={{ margin: '2px 0', fontSize: '12px' }}>Tel: +000 000 000 000</p>
-                <h3 style={{ margin: '10px 0 0', fontSize: '16px' }}>TITHE RECEIPT</h3>
-              </div>
-              <div style={{ marginBottom: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <strong>Receipt No:</strong>
-                  <span>{currentReceipt.receiptNo}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <strong>Date:</strong>
-                  <span>{new Date(currentReceipt.date).toLocaleDateString()}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <strong>Member No:</strong>
-                  <span>{currentReceipt.member.memberNo}</span>
-                </div>
-              </div>
-              <div style={{ borderTop: '1px solid #ccc', paddingTop: '10px', marginBottom: '15px' }}>
-                <p style={{ margin: '5px 0' }}><strong>Received from:</strong></p>
-                <p style={{ margin: '5px 0', fontSize: '15px' }}>{currentReceipt.member.name}</p>
-                <p style={{ margin: '5px 0', fontSize: '13px', color: '#666' }}>{currentReceipt.member.phone}</p>
-              </div>
-              <div style={{ background: '#f5f5f5', padding: '15px', borderRadius: '5px', marginBottom: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <strong>Payment Method:</strong>
-                  <span>{currentReceipt.paymentMethod}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #333', paddingTop: '10px', marginTop: '10px' }}>
-                  <strong style={{ fontSize: '16px' }}>AMOUNT:</strong>
-                  <strong style={{ fontSize: '18px' }}>TSh {currentReceipt.amount.toLocaleString()}</strong>
-                </div>
-              </div>
-              <div style={{ borderTop: '1px solid #ccc', paddingTop: '10px', fontSize: '12px' }}>
-                <p style={{ margin: '5px 0' }}><strong>Being payment for:</strong> TITHE</p>
-                <p style={{ margin: '15px 0 5px', textAlign: 'center' }}>___________________________</p>
-                <p style={{ margin: '0', textAlign: 'center', fontSize: '11px' }}>Authorized Signature</p>
-              </div>
-              <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '11px', color: '#666', borderTop: '1px dashed #999', paddingTop: '10px' }}>
-                <p style={{ margin: '2px 0' }}>Thank you for your faithfulness!</p>
-                <p style={{ margin: '2px 0' }}>God bless you abundantly</p>
-              </div>
-            </div>
-            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-              <button onClick={printReceipt} style={{ flex: 1, background: '#27ae60', color: '#fff', border: 'none', padding: '15px', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>🖨️ Print</button>
-              <button onClick={resetForm} style={{ flex: 1, background: '#3498db', color: '#fff', border: 'none', padding: '15px', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>➕ New</button>
-            </div>
-            <style>{`@media print { body * { visibility: hidden; } #receipt, #receipt * { visibility: visible; } #receipt { position: absolute; left: 0; top: 0; width: 100%; } }`}</style>
-          </div>
-        );
-      }
-
-      const btnStyle = (isActive) => ({
-        flex: 1,
-        padding: '12px',
-        border: 'none',
-        background: isActive ? '#3498db' : '#ecf0f1',
-        color: isActive ? '#fff' : '#7f8c8d',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: 'bold',
-        cursor: 'pointer'
-      });
-
-      return (
-        <div style={{ fontFamily: 'Arial', background: '#f0f4f8', minHeight: '100vh', padding: '16px' }}>
-          <div style={{ background: 'linear-gradient(135deg, #2c3e50, #3498db)', borderRadius: '10px', padding: '20px', color: '#fff', marginBottom: '16px' }}>
-            <h1 style={{ margin: '0 0 5px', fontSize: '22px' }}>⛪ KICC TITHES</h1>
-            <p style={{ margin: 0, fontSize: '13px', opacity: 0.9 }}>{isSynced && '✅ Synced'} {receipts.length} receipts | {members.length} members</p>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <button onClick={() => setView('form')} style={btnStyle(view === 'form')}>📝 Receipt</button>
-            <button onClick={() => setView('reports')} style={btnStyle(view === 'reports')}>📊 Reports</button>
-            <button onClick={() => setView('settings')} style={btnStyle(view === 'settings')}>⚙️ Settings</button>
-          </div>
-          
-          {view === 'form' && (
-            <div style={{ background: '#fff', borderRadius: '10px', padding: '16px' }}>
-              <h3 style={{ margin: '0 0 16px' }}>Generate Receipt</h3>
-              <input type="text" placeholder="🔍 Search member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', marginBottom: '12px', boxSizing: 'border-box' }} />
-              {searchTerm && filteredMembers.length > 0 && (
-                <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '12px', border: '1px solid #ddd', borderRadius: '6px' }}>
-                  {filteredMembers.map(m => (
-                    <div key={m.id} onClick={() => { setSelectedMember(m); setSearchTerm(''); }} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #eee' }}>
-                      <div style={{ fontWeight: 'bold' }}>{m.name}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>{m.memberNo}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {selectedMember && (
-                <div style={{ background: '#e3f2fd', padding: '12px', borderRadius: '6px', marginBottom: '12px' }}>
-                  <strong>{selectedMember.name}</strong> ({selectedMember.memberNo})
-                </div>
-              )}
-              <input type="number" placeholder="Amount (TSh)" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', marginBottom: '12px', boxSizing: 'border-box' }} />
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', marginBottom: '12px', boxSizing: 'border-box' }} />
-              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', marginBottom: '16px', background: '#fff' }}>
-                <option>Cash</option>
-                <option>M-Pesa</option>
-                <option>Bank Transfer</option>
-                <option>Cheque</option>
-              </select>
-              <button onClick={generateReceipt} style={{ width: '100%', background: '#3498db', color: '#fff', border: 'none', padding: '14px', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>📝 Generate Receipt</button>
-            </div>
-          )}
-
-          {view === 'reports' && (
-            <div style={{ background: '#fff', borderRadius: '10px', padding: '16px' }}>
-              <h3 style={{ margin: '0 0 16px' }}>📊 Reports</h3>
-              <p style={{ color: '#666' }}>Total: TSh {receipts.reduce((s, r) => s + r.amount, 0).toLocaleString()} ({receipts.length} receipts)</p>
-              <button onClick={exportToCSV} style={{ width: '100%', background: '#27ae60', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>📥 Export CSV</button>
-            </div>
-          )}
-
-          {view === 'settings' && (
-            <div style={{ background: '#fff', borderRadius: '10px', padding: '16px' }}>
-              <h3 style={{ margin: '0 0 16px' }}>⚙️ Settings</h3>
-              <input type="text" placeholder="Google Sheets URL" value={sheetsUrl} onChange={(e) => setSheetsUrl(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', marginBottom: '12px', boxSizing: 'border-box' }} />
-              <button onClick={setupGoogleSheets} style={{ width: '100%', background: '#27ae60', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>🔗 Connect Sheets</button>
-            </div>
-          )}
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('receipt')">🧾 Receipt</button>
+            <button class="tab" onclick="switchTab('reports')">📊 CSV Reports</button>
+            <button class="tab" onclick="switchTab('settings')">⚙️ Settings</button>
         </div>
-      );
-    }
 
-    ReactDOM.render(<ChurchTitheSystem />, document.getElementById('root'));
-  </script>
+        <div id="receipt" class="view-section active card">
+            <h2 class="section-title">Generate Receipt</h2>
+            
+            <div class="form-group">
+                <input list="memberList" id="memberName" placeholder="🔍 Search member or type new name...">
+                <datalist id="memberList"></datalist>
+            </div>
+            
+            <div class="form-group">
+                <input type="number" id="amount" placeholder="Amount (TSh)" required>
+            </div>
+            
+            <div class="form-group">
+                <input type="date" id="date" required>
+            </div>
+            
+            <div class="form-group">
+                <select id="paymentMethod">
+                    <option value="Cash">Cash</option>
+                    <option value="Mobile Money">Mobile Money (M-Pesa/Tigo Pesa)</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
+            
+            <button class="btn-generate" onclick="generateReceipt()">🖨️ Print 58mm Receipt</button>
+        </div>
+
+        <div id="reports" class="view-section card">
+            <h2 class="section-title">Export Data</h2>
+            <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 20px;">Download structured CSV files for Excel or Data Analytics tools.</p>
+            
+            <button class="btn-csv" onclick="downloadCSVReport('week')">📥 Download This Week's Data</button>
+            <button class="btn-csv" onclick="downloadCSVReport('month')">📥 Download This Month's Data</button>
+            <button class="btn-csv" onclick="downloadCSVReport('year')">📥 Download This Year's Data</button>
+            
+            <div class="sub-title" style="margin-top: 30px;">Complete Backup</div>
+            <button class="btn-csv" style="background-color: #2c3e50;" onclick="downloadCSVReport('all')">💾 Download All Historical Data</button>
+        </div>
+
+        <div id="settings" class="view-section card">
+            <h2 class="section-title">System Settings</h2>
+            <p><strong>Database:</strong> Google Sheets connected</p>
+            <p><strong>Printer Type:</strong> 58mm Thermal</p>
+            <button class="btn-generate" onclick="clearLocalData()" style="background-color: #e74c3c; margin-top: 20px;">⚠️ Clear Local Device Memory</button>
+        </div>
+    </div>
+
+    <div id="receipt-print">
+        <div class="print-header">KILIMANJARO INTERNATIONAL<br>CHRISTIAN CENTER</div>
+        <div class="print-sub">P.O. BOX 7478 - MOSHI<br>Mob: +2557658992871</div>
+        <div class="print-header" style="text-decoration: underline;">RECEIPT</div>
+        <div class="print-line"></div>
+        <p style="text-align: center; font-size: 14px; margin: 5px 0;">
+            <b>Date:</b> <span id="r-date"></span><br><br>
+            Received from:<br><b><span id="r-name"></span></b>
+        </p>
+        <div class="print-line"></div>
+        <p style="text-align: center; font-size: 16px; font-weight: bold; margin: 5px 0;">Amount: TZS <span id="r-amount"></span>/=</p>
+        <p style="font-size: 12px; text-align: center;">Method: <span id="r-method"></span></p>
+        <div class="print-line"></div>
+        <p style="font-size: 12px; text-align: center;">With Thanks!<br>For: KICC</p>
+    </div>
+
+    <script>
+        // --- Initialization ---
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4syr-174zvnfNzIULvYqicm3tTwEv2n3v7oOBX_7ibltIllUGwOvQmX2wBla--wqA/exec';
+        let localReceipts = JSON.parse(localStorage.getItem('kicc_receipts')) || [];
+        let knownMembers = JSON.parse(localStorage.getItem('kicc_members')) || ["Irene Shayo", "Patrick Mugusie", "Michael Mremi"];
+
+        // Set default date
+        document.getElementById('date').valueAsDate = new Date();
+
+        updateTopBar();
+        populateDatalist();
+
+        // --- Navigation ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // --- State Updates ---
+        function updateTopBar() {
+            document.getElementById('sync-status').innerText = `Synced ${localReceipts.length} receipts | ${knownMembers.length} members`;
+        }
+
+        function populateDatalist() {
+            const datalist = document.getElementById('memberList');
+            datalist.innerHTML = '';
+            knownMembers.forEach(member => {
+                let option = document.createElement('option');
+                option.value = member;
+                datalist.appendChild(option);
+            });
+        }
+
+        // --- Core Functions: 1. Generate & Print Receipt ---
+        function generateReceipt() {
+            const name = document.getElementById('memberName').value.trim();
+            const amount = document.getElementById('amount').value;
+            const date = document.getElementById('date').value;
+            const method = document.getElementById('paymentMethod').value;
+
+            if(!name || !amount) { alert("Please enter both Name and Amount."); return; }
+
+            // Save new member if not recognized
+            if (!knownMembers.includes(name)) {
+                knownMembers.push(name);
+                localStorage.setItem('kicc_members', JSON.stringify(knownMembers));
+                populateDatalist();
+            }
+
+            // Save to local memory
+            localReceipts.push({ date: date, name: name, amount: Number(amount), method: method });
+            localStorage.setItem('kicc_receipts', JSON.stringify(localReceipts));
+            updateTopBar();
+
+            // Populate Print Template
+            document.getElementById('r-name').innerText = name;
+            document.getElementById('r-amount').innerText = Number(amount).toLocaleString();
+            document.getElementById('r-date').innerText = date;
+            document.getElementById('r-method').innerText = method;
+
+            // Send raw data to Google Sheets in the background
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST', mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: date, name: name, amount: amount })
+            });
+
+            // Trigger the 58mm Print Menu
+            window.print();
+            
+            // Clear amount input for the next person
+            document.getElementById('amount').value = '';
+        }
+
+        // --- Core Functions: 2. Filter & Download CSV ---
+        function downloadCSVReport(timeframe) {
+            if (localReceipts.length === 0) { alert("No data available to export."); return; }
+
+            const today = new Date();
+            let filteredReceipts = [];
+            let fileNameSuffix = "";
+
+            // Filter data based on selected button
+            localReceipts.forEach(receipt => {
+                const rDate = new Date(receipt.date);
+                
+                if (timeframe === 'month' && rDate.getMonth() === today.getMonth() && rDate.getFullYear() === today.getFullYear()) {
+                    filteredReceipts.push(receipt);
+                    fileNameSuffix = "This_Month";
+                } 
+                else if (timeframe === 'year' && rDate.getFullYear() === today.getFullYear()) {
+                    filteredReceipts.push(receipt);
+                    fileNameSuffix = "This_Year";
+                } 
+                else if (timeframe === 'week') {
+                    const diffDays = Math.ceil(Math.abs(today - rDate) / (1000 * 60 * 60 * 24)); 
+                    if(diffDays <= 7) { filteredReceipts.push(receipt); }
+                    fileNameSuffix = "Last_7_Days";
+                } 
+                else if (timeframe === 'all') {
+                    filteredReceipts.push(receipt);
+                    fileNameSuffix = "All_Time";
+                }
+            });
+
+            if (filteredReceipts.length === 0) {
+                alert(`No records found for ${fileNameSuffix.replace(/_/g, " ")}.`);
+                return;
+            }
+
+            // Build CSV Content
+            let csvContent = "Date,Member Name,Amount (TZS),Payment Method\n";
+            filteredReceipts.forEach(r => {
+                // Quotes around the name ensure any commas typed in the name don't break the CSV columns
+                csvContent += `${r.date},"${r.name}",${r.amount},${r.method}\n`;
+            });
+
+            // Generate Download File
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `KICC_Tithe_Report_${fileNameSuffix}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Settings Utilities ---
+        function clearLocalData() {
+            if(confirm("Are you sure? This deletes the local history from this phone. (Your Google Sheets data is safe and will not be deleted).")) {
+                localStorage.removeItem('kicc_receipts');
+                localReceipts = [];
+                updateTopBar();
+                alert("Local memory cleared.");
+            }
+        }
+    </script>
 </body>
 </html>
