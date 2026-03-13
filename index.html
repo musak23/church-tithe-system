@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Church Tithe System</title>
+    <title>KICC Tithe System</title>
     <style>
         /* Modern UI Reset & Colors */
         :root {
@@ -23,6 +23,9 @@
 
         /* Main Container */
         .container { max-width: 600px; margin: 20px auto; padding: 0 15px; }
+
+        /* Master Heading */
+        .master-heading { text-align: center; color: var(--topbar-bg); font-size: 22px; font-weight: 800; margin-top: 10px; margin-bottom: 25px; line-height: 1.3; }
 
         /* Tabs */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -77,6 +80,9 @@
     </div>
 
     <div class="container">
+        
+        <h1 class="master-heading">KILIMANJARO INTERNATIONAL CHRISTIAN CENTER(KICC)</h1>
+
         <div class="tabs">
             <button class="tab active" onclick="switchTab('receipt')">🧾 Receipt</button>
             <button class="tab" onclick="switchTab('reports')">📊 CSV Reports</button>
@@ -131,7 +137,7 @@
     </div>
 
     <div id="receipt-print">
-        <div class="print-header">KILIMANJARO INTERNATIONAL<br>CHRISTIAN CENTER</div>
+        <div class="print-header">KILIMANJARO INTERNATIONAL<br>CHRISTIAN CENTER(KICC)</div>
         <div class="print-sub">P.O. BOX 7478 - MOSHI<br>Mob: +2557658992871</div>
         <div class="print-header" style="text-decoration: underline;">RECEIPT</div>
         <div class="print-line"></div>
