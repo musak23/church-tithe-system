@@ -165,20 +165,17 @@
             </div>
 
             <div id="settings" class="view-section card">
-                <h2 class="section-title">System Settings</h2>
-                <p><strong>Database:</strong> Google Sheets connected</p>
-                <p><strong>Printer Type:</strong> 58mm Thermal</p>
-                
-                <div class="sub-title" style="margin-top: 25px;">Import Members List</div>
-                <p style="font-size: 12px; color: #666;">In Excel, save your list of names as a <b>CSV (Comma delimited)</b> file and upload it here.</p>
-                <div class="form-group">
-                    <input type="file" id="csvFileInput" accept=".csv">
-                </div>
-                <button class="btn-generate" style="background-color: #8e44ad; margin-top: 0;" onclick="importMembersFromCSV()">📥 Load Names into System</button>
+            <h2 class="section-title">System Settings</h2>
+            <p><strong>Database:</strong> Google Sheets connected</p>
+            <p><strong>Printer Type:</strong> 58mm Thermal</p>
+            
+            <div class="sub-title" style="margin-top: 25px;">Cloud Sync</div>
+            <p style="font-size: 12px; color: #666;">Click below to securely download the latest member names from the Google Sheets master database.</p>
+            <button class="btn-generate" id="btn-sync" style="background-color: #8e44ad; margin-top: 0;" onclick="fetchMembersFromDB()">🔄 Sync Members from Database</button>
 
-                <div class="sub-title" style="margin-top: 35px;">Danger Zone</div>
-                <button class="btn-generate" onclick="clearLocalData()" style="background-color: #e74c3c; margin-top: 0;">⚠️ Clear Local Device Memory</button>
-            </div>
+            <div class="sub-title" style="margin-top: 35px;">Danger Zone</div>
+            <button class="btn-generate" onclick="clearLocalData()" style="background-color: #e74c3c; margin-top: 0;">⚠️ Clear Local Device Memory</button>
+        </div>
         </div>
 
         <div id="receipt-print">
@@ -429,6 +426,37 @@
                 updateTopBar();
                 alert("Local memory cleared.");
             }
+        }
+        // --- NEW: Cloud Sync Function ---
+        function fetchMembersFromDB() {
+            const btn = document.getElementById('btn-sync');
+            btn.innerText = "⏳ Downloading from Google Sheets...";
+            btn.disabled = true;
+
+            const fetchUrl = `${GOOGLE_SCRIPT_URL}?action=getMembers`;
+
+            fetch(fetchUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.members && data.members.length > 0) {
+                        knownMembers = data.members;
+                        // Save the downloaded list to this device
+                        localStorage.setItem('kicc_members', JSON.stringify(knownMembers));
+                        populateDatalist();
+                        updateTopBar();
+                        alert(`Success! Downloaded ${knownMembers.length} members from the master database.`);
+                    } else {
+                        alert("No members found in the database. Ensure your 'Members' tab in Google Sheets has names in Column A.");
+                    }
+                    btn.innerText = "🔄 Sync Members from Database";
+                    btn.disabled = false;
+                })
+                .catch(error => {
+                    console.error("Sync Error:", error);
+                    alert("Failed to connect to the database. Please check your internet connection.");
+                    btn.innerText = "🔄 Sync Members from Database";
+                    btn.disabled = false;
+                });
         }
     </script>
 </body>
